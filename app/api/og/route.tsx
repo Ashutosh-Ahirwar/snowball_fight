@@ -1,3 +1,4 @@
+// app/api/og/route.ts
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 
@@ -18,9 +19,9 @@ export async function GET(req: NextRequest) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: mode === 'hit' ? '#1e293b' : '#b91c1c', // Slate-900 or Red-700
+          backgroundColor: mode === 'hit' ? '#0f172a' : '#b91c1c', // Slate-900 or Red-700
           color: 'white',
-          fontFamily: 'sans-serif',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
           padding: '40px',
           textAlign: 'center',
         }}
@@ -29,13 +30,17 @@ export async function GET(req: NextRequest) {
           <>
             <div style={{ fontSize: 80, marginBottom: 20 }}>🥶 SPLAT!</div>
             <div style={{ fontSize: 40, fontWeight: 'bold' }}>{user} got iced!</div>
-            <div style={{ fontSize: 24, marginTop: 20, opacity: 0.8 }}>Click to throw back ❄️</div>
+            <div style={{ fontSize: 24, marginTop: 20, opacity: 0.9 }}>
+              Tap to throw back & farm Snow Power Points ❄️
+            </div>
           </>
         ) : (
           <>
             <div style={{ fontSize: 80, marginBottom: 20 }}>🎄</div>
             <div style={{ fontSize: 50, fontWeight: 'bold' }}>Snowball Fight</div>
-            <div style={{ fontSize: 30, marginTop: 20 }}>{user} wants to battle!</div>
+            <div style={{ fontSize: 30, marginTop: 20 }}>
+              {user} wants to battle for Snow Power Points!
+            </div>
           </>
         )}
       </div>

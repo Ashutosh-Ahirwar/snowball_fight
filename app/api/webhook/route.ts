@@ -6,17 +6,15 @@ export async function POST(req: NextRequest) {
   const requestJson = await req.json();
 
   if (requestJson.event === 'miniapp_added') {
-    const { token, url } = requestJson.notificationDetails;
-    
-    // In a real app, you'd extract the real FID from the signature.
-    // For this MVP, we use a placeholder or rely on the /register endpoint.
-    // We pass "unknown" as the username to satisfy the new 4-argument requirement.
-    
-    // Example placeholder FID (Replace with real logic if needed)
-    const userFid = 0; 
+    const details = requestJson.notificationDetails;
 
-    // FIX: Added "unknown" as the 2nd argument (username)
-    await saveUserToken(userFid, "unknown", token, url);
+    if (details?.token && details?.url) {
+      // In a real app, you'd extract the real FID from the signature.
+      // For this MVP, we use a placeholder or rely on the /register endpoint.
+      const userFid = 0;
+
+      await saveUserToken(userFid, 'unknown', details.token, details.url);
+    }
   }
 
   return NextResponse.json({ success: true });
