@@ -108,9 +108,6 @@ export default function LeaderboardPage() {
           {userInfo && userInfo.rank !== null ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center">
-                  <User className="w-4 h-4 text-slate-100" />
-                </div>
                 <div className="leading-tight">
                   <p className="text-sm font-semibold">
                     #{userInfo.rank} @{userInfo.username}
@@ -121,7 +118,7 @@ export default function LeaderboardPage() {
                 </div>
               </div>
               <div className="text-right text-[11px] leading-tight">
-                <p className="text-slate-400">Snow Power</p>
+                <p className="text-slate-400">SPP</p>
                 <p className="font-semibold text-slate-100">
                   {userInfo.points}
                 </p>
