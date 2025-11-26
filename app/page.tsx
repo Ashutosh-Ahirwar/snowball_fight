@@ -12,12 +12,13 @@ export default function Home() {
   const [username, setUsername] = useState<string>('');
   const [isAdded, setIsAdded] = useState<boolean>(false);
   const [inviteTarget, setInviteTarget] = useState<string>('');
+  const [targetUsername, setTargetUsername] = useState<string>('');
 
   const handleRegister = useCallback(async () => {
     try {
       setStatus('🎁 Adding to collection...');
       const result = await sdk.actions.addMiniApp();
-      
+
       if (result.notificationDetails) {
         const context = await sdk.context;
         await fetch('/api/register', {
@@ -26,8 +27,8 @@ export default function Home() {
             fid: context.user.fid,
             username: context.user.username || 'anonymous',
             token: result.notificationDetails.token,
-            url: result.notificationDetails.url
-          })
+            url: result.notificationDetails.url,
+          }),
         });
         setIsAdded(true);
         setStatus('✅ Added! You are registered in the phonebook.');
@@ -47,19 +48,16 @@ export default function Home() {
 
       // --- HANDLE SHARED CARD CLICKS ---
       if (context.location?.type === 'cast_embed') {
-        const embedUrl = new URL(context.location.embed); 
+        const embedUrl = new URL(context.location.embed);
         const referrer = embedUrl.searchParams.get('referrer');
-        // If they clicked a card, put them in "Pile On" mode against the referrer
         if (referrer) {
-           setMode('PILE_ON');
-           setAggressor(referrer);
+          setMode('PILE_ON');
+          setAggressor(referrer);
         }
-      }
-      else if (context.location?.type === 'notification') {
+      } else if (context.location?.type === 'notification') {
         setMode('HIT');
         sdk.haptics.impactOccurred('heavy');
-      } 
-      else if (context.location?.type === 'cast_share') {
+      } else if (context.location?.type === 'cast_share') {
         setMode('PILE_ON');
         setAggressor(context.location.cast.author.username || 'Grinch');
       }
@@ -69,16 +67,15 @@ export default function Home() {
     init();
   }, [handleRegister]);
 
-  // ... throwSnowball and donate functions remain exactly the same ...
-  const throwSnowball = async (targetUsername: string) => {
-    if (!targetUsername) return;
+  const throwSnowball = async (targetUsernameLocal: string) => {
+    if (!targetUsernameLocal) return;
     setInviteTarget('');
     sdk.haptics.impactOccurred('light');
-    setStatus(`❄️ Launching snowball at @${targetUsername}...`);
-    
+    setStatus(`❄️ Launching snowball at @${targetUsernameLocal}...`);
+
     const res = await fetch('/api/throw', {
       method: 'POST',
-      body: JSON.stringify({ targetUsername, senderName: username }),
+      body: JSON.stringify({ targetUsername: targetUsernameLocal, senderName: username }),
     });
     const data = await res.json();
 
@@ -88,8 +85,8 @@ export default function Home() {
     } else {
       sdk.haptics.notificationOccurred('warning');
       if (res.status === 404) {
-        setStatus(`❌ Missed! @${targetUsername} isn't playing yet.`);
-        setInviteTarget(targetUsername);
+        setStatus(`❌ Missed! @${targetUsernameLocal} isn't playing yet.`);
+        setInviteTarget(targetUsernameLocal);
       } else {
         setStatus(`❌ ${data.error || 'Missed!'}`);
       }
@@ -100,23 +97,24 @@ export default function Home() {
     try {
       await sdk.actions.sendToken({
         recipientAddress: '0xa6dee9fde9e1203ad02228f00bf10235d9ca3752',
-        amount: '5000000000000000', 
-        token: 'eip155:8453/native', 
+        amount: '5000000000000000',
+        token: 'eip155:8453/native',
       });
       sdk.haptics.notificationOccurred('success');
-    } catch (e) { console.log('Donation cancelled'); }
+    } catch (e) {
+      console.log('Donation cancelled');
+    }
   };
 
   // --- UPDATED INVITE LOGIC ---
   const inviteUser = async () => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    // Generate dynamic share URL
     const shareUrl = `${appUrl}/share?user=${username}&mode=invite`;
 
     try {
       await sdk.actions.composeCast({
         text: `Hey @${inviteTarget}, come fight me! ❄️`,
-        embeds: [shareUrl] // Shares the dynamic card!
+        embeds: [shareUrl],
       });
       setInviteTarget('');
       setStatus('📨 Challenge sent!');
@@ -125,15 +123,27 @@ export default function Home() {
     }
   };
 
-  // ... Render logic remains the same ...
+  // === MODES ===
+
   if (mode === 'HIT') {
     return (
-      <div className="relative flex flex-col items-center justify-center h-screen bg-slate-900 text-white p-4 overflow-hidden">
-        <Snowfall snowflakeCount={400} />
-        <div className="z-10 text-center space-y-6">
-          <div className="text-8xl animate-bounce drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">🥶</div>
-          <h1 className="text-5xl font-black text-red-500 tracking-tighter drop-shadow-lg">YOU GOT HIT!</h1>
-          <button onClick={() => setMode('IDLE')} className="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all">
+      <div className="relative flex flex-col items-center justify-center h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white p-4 overflow-hidden">
+        <Snowfall snowflakeCount={300} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(248,113,113,0.25),_transparent)]" />
+        <div className="relative z-10 max-w-sm w-full text-center space-y-6">
+          <div className="text-8xl animate-bounce drop-shadow-[0_0_25px_rgba(248,250,252,0.65)]">
+            🥶
+          </div>
+          <h1 className="text-4xl font-black tracking-tight">
+            <span className="text-red-400">YOU GOT HIT</span>!
+          </h1>
+          <p className="text-sm text-slate-200">
+            Someone just pelted you with a snowball. Clean up & send one right back.
+          </p>
+          <button
+            onClick={() => setMode('IDLE')}
+            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-bold shadow-[0_10px_30px_rgba(16,185,129,0.45)] border border-emerald-300/40 active:translate-y-0.5 transition-all"
+          >
             Wipe Face & Retaliate 😤
           </button>
         </div>
@@ -143,74 +153,165 @@ export default function Home() {
 
   if (mode === 'PILE_ON') {
     return (
-      <div className="relative p-4 flex flex-col h-screen bg-red-950 text-white overflow-hidden">
-        <Snowfall color="#ffcccc" />
-        <div className="z-10 flex-grow flex flex-col items-center justify-center space-y-6">
-          <h1 className="text-3xl font-bold text-center leading-tight">
-            Pile on <span className="text-yellow-400">@{aggressor}</span>!
-          </h1>
-          <div className="bg-red-900/50 p-3 rounded-lg border border-red-800">
-            <p className="text-sm text-red-200">Everyone is throwing snowballs at this cast!</p>
+      <div className="relative flex flex-col h-screen bg-gradient-to-b from-rose-950 via-red-950 to-slate-950 text-white overflow-hidden">
+        <Snowfall color="#fecaca" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(248,250,252,0.08),_transparent)]" />
+        <div className="relative z-10 flex-grow flex flex-col items-center justify-center p-5">
+          <div className="w-full max-w-md space-y-6">
+            <div className="text-center space-y-2">
+              <p className="text-xs uppercase tracking-[0.25em] text-rose-200/80">
+                Snowball Alert
+              </p>
+              <h1 className="text-3xl font-black leading-tight">
+                Pile on{' '}
+                <span className="text-yellow-300 drop-shadow-[0_0_10px_rgba(252,211,77,0.6)]">
+                  @{aggressor}
+                </span>
+                !
+              </h1>
+              <p className="text-sm text-rose-100/80">
+                This cast is under heavy fire. Add your snowball to the storm.
+              </p>
+            </div>
+
+            <div className="bg-red-900/50 backdrop-blur-md p-4 rounded-2xl border border-red-500/30 shadow-[0_18px_45px_rgba(220,38,38,0.35)]">
+              <p className="text-xs font-semibold text-red-100 mb-2 flex items-center justify-center gap-2">
+                <Snowflake className="w-4 h-4" />
+                Live pile-on in progress
+              </p>
+              <p className="text-[13px] text-red-100/90">
+                Everyone who taps this card helps freeze @{aggressor} a little more.
+              </p>
+            </div>
+
+            <button
+              onClick={() => throwSnowball(aggressor)}
+              className="w-full py-4 bg-gradient-to-r from-slate-50 via-slate-100 to-slate-50 text-red-700 rounded-3xl text-xl font-black shadow-[0_18px_45px_rgba(248,250,252,0.65)] border border-slate-200/70 active:scale-95 transition flex items-center justify-center gap-2"
+            >
+              THROW SNOWBALL ❄️
+            </button>
           </div>
-          <button onClick={() => throwSnowball(aggressor)} className="w-full py-8 bg-white text-red-600 rounded-3xl text-2xl font-black shadow-lg border-4 border-red-200 active:scale-95 transition">
-             THROW SNOWBALL ❄️
-          </button>
         </div>
       </div>
     );
   }
 
+  // === MAIN SCREEN ===
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-10">
-      <Snowfall color="#cbd5e1" snowflakeCount={100} />
-      <div className="bg-red-600 text-white p-4 shadow-lg rounded-b-3xl mb-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/snow.png')]"></div>
-        <div className="relative z-10 flex justify-between items-center">
-          <h1 className="text-2xl font-black italic tracking-tight flex items-center gap-2">
-            <Snowflake className="w-6 h-6" /> Snowball Fight
-          </h1>
+    <div className="relative min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50 pb-10 overflow-hidden">
+      <Snowfall color="#e5e7eb" snowflakeCount={140} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(248,250,252,0.15),_transparent)]" />
+
+      {/* Top banner */}
+      <div className="relative z-10 px-4 pt-4 max-w-md mx-auto">
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-500 text-white px-4 py-3 shadow-xl rounded-3xl mb-6 flex items-center justify-between gap-3 border border-white/10 overflow-hidden">
+          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/snow.png')]" />
+          <div className="relative flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
+              <Snowflake className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-black tracking-tight">Snowball Fight</h1>
+              <p className="text-xs text-red-50/90">
+                Logged in as <span className="font-semibold">@{username}</span>
+              </p>
+            </div>
+          </div>
+
           {!isAdded && (
-            <button onClick={handleRegister} className="flex items-center gap-1 text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition border border-white/30">
-              <Bookmark className="w-3 h-3" /> Bookmark App
+            <button
+              onClick={handleRegister}
+              className="relative flex items-center gap-1 text-[10px] font-bold bg-white/15 hover:bg-white/20 px-3 py-1.5 rounded-full transition border border-white/30 shadow-sm"
+            >
+              <Bookmark className="w-3 h-3" />
+              Bookmark
             </button>
           )}
         </div>
-      </div>
 
-      <div className="px-4 max-w-md mx-auto space-y-6 relative z-10">
         {status && (
-          <div className="animate-fade-in bg-slate-800 text-white text-center py-2 px-4 rounded-full text-sm font-medium shadow-md border border-slate-700">
+          <div className="mb-4 animate-in fade-in-0 slide-in-from-top-2 bg-slate-900/70 backdrop-blur border border-slate-700/60 text-white text-center py-2.5 px-4 rounded-2xl text-xs font-medium shadow-[0_12px_30px_rgba(15,23,42,0.7)]">
             {status}
           </div>
         )}
 
-        <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100">
-          <div className="flex items-center gap-2 mb-4 text-red-600">
-             <User className="w-5 h-5" />
-             <h2 className="font-bold text-lg">Who is the target?</h2>
+        {/* Main card */}
+        <div className="bg-slate-900/70 backdrop-blur-xl p-5 rounded-3xl shadow-[0_20px_60px_rgba(15,23,42,0.9)] border border-slate-700/60 space-y-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-2xl bg-slate-800 flex items-center justify-center">
+                <User className="w-4 h-4 text-slate-100" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm uppercase tracking-[0.15em] text-slate-300">
+                  Choose Your Target
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Hit back or start a fresh snowball beef.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] px-2 py-1 rounded-full bg-slate-800 text-slate-200 border border-slate-700">
+              Real-time ✦
+            </span>
           </div>
-          <input type="text" id="targetUsername" placeholder="Enter username (e.g. dwr)" className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl mb-4 text-lg focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition placeholder:text-slate-400" autoCapitalize="none" />
-          <button onClick={() => { const val = (document.getElementById('targetUsername') as HTMLInputElement).value; throwSnowball(val); }} className="w-full py-4 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-red-500/30 active:scale-95 transition flex items-center justify-center gap-2">
-            Launch Snowball ❄️
-          </button>
+
+          <div className="space-y-3">
+            <label
+              htmlFor="targetUsername"
+              className="text-[11px] font-medium text-slate-300 uppercase tracking-[0.16em]"
+            >
+              Target username
+            </label>
+            <input
+              type="text"
+              id="targetUsername"
+              value={targetUsername}
+              onChange={(e) => setTargetUsername(e.target.value)}
+              placeholder="e.g. dwr"
+              autoCapitalize="none"
+              className="w-full px-4 py-3.5 bg-slate-950/60 border border-slate-700 rounded-2xl text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/30 transition placeholder:text-slate-500"
+            />
+            <button
+              onClick={() => throwSnowball(targetUsername.trim())}
+              disabled={!targetUsername.trim()}
+              className="w-full py-3.5 bg-gradient-to-r from-rose-500 via-red-500 to-amber-400 hover:from-rose-400 hover:via-red-500 hover:to-amber-300 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm shadow-[0_18px_45px_rgba(248,113,113,0.55)] active:scale-[0.98] transition flex items-center justify-center gap-2"
+            >
+              <Snowflake className="w-4 h-4" />
+              Launch Snowball
+            </button>
+          </div>
 
           {inviteTarget && (
-            <div className="mt-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-                <p className="text-sm text-amber-800 font-medium mb-3 text-center">@{inviteTarget} isn't playing yet. Call them out?</p>
-                <button onClick={inviteUser} className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded-lg font-bold shadow-sm transition flex items-center justify-center gap-2">
-                  <Send className="w-4 h-4" /> Cast Invite
+            <div className="mt-3 pt-4 border-t border-slate-700/70 animate-in fade-in-0 slide-in-from-top-2">
+              <div className="bg-amber-50/5 border border-amber-500/40 rounded-2xl p-4 flex flex-col gap-3">
+                <p className="text-xs text-amber-100 font-medium text-center">
+                  @{inviteTarget} isn&apos;t playing yet. Want to drag them into the snow?
+                </p>
+                <button
+                  onClick={inviteUser}
+                  className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl font-bold text-xs shadow-[0_12px_30px_rgba(251,191,36,0.45)] transition flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" /> Cast an Invite
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="pt-8 text-center">
-          <button onClick={donate} className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-yellow-400 text-yellow-900 rounded-full font-bold text-sm hover:bg-yellow-300 transition shadow-lg shadow-yellow-400/20 active:scale-95">
-            <Gift className="w-4 h-4 group-hover:animate-bounce" /> Buy Santa a Coffee
+        {/* Footer / Donate */}
+        <div className="mt-7 text-center space-y-3">
+          <button
+            onClick={donate}
+            className="group inline-flex items-center justify-center gap-2 px-5 py-3 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 rounded-full font-semibold text-xs shadow-[0_14px_35px_rgba(250,204,21,0.6)] active:scale-95 transition border border-yellow-200/70"
+          >
+            <Gift className="w-4 h-4 group-hover:animate-bounce" />
+            Buy Santa a Coffee
           </button>
-          <p className="text-slate-400 text-xs mt-4 font-medium">Built for Farcaster Holidays 🎄</p>
+          <p className="text-slate-500 text-[10px] font-medium tracking-[0.18em] uppercase">
+            Built for Farcaster Holidays 🎄
+          </p>
         </div>
       </div>
     </div>
