@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import sdk from '@farcaster/miniapp-sdk';
 import Snowfall from 'react-snowfall';
 import { Snowflake, Gift, Bookmark, User, Send } from 'lucide-react';
+import { createWalletClient, custom, parseEther } from 'viem';
+import { base } from 'viem/chains';
 
 export default function Home() {
   const [mode, setMode] = useState<'IDLE' | 'HIT' | 'PILE_ON'>('IDLE');
@@ -93,16 +95,36 @@ export default function Home() {
     }
   };
 
+  // --- UPDATED DONATE FUNCTION ---
   const donate = async () => {
     try {
-      await sdk.actions.sendToken({
-        recipientAddress: '0xa6dee9fde9e1203ad02228f00bf10235d9ca3752',
-        amount: '5000000000000000',
-        token: 'eip155:8453/native',
+      setStatus('☕ Initiating donation...');
+      
+      // 1. Get the Farcaster Wallet Provider
+      const provider = sdk.wallet.getEthereumProvider();
+      
+      // 2. Create a Viem Wallet Client
+      const walletClient = createWalletClient({
+        chain: base,
+        transport: custom(provider),
       });
+
+      // 3. Request Access (Connect)
+      await walletClient.requestAddresses();
+      
+      // 4. Send Transaction (0.005 ETH)
+      await walletClient.sendTransaction({
+        to: '0xa6dee9fde9e1203ad02228f00bf10235d9ca3752',
+        value: parseEther('0.005'), 
+        chain: base,
+      });
+
       sdk.haptics.notificationOccurred('success');
+      setStatus('✅ Donation Sent! Thank you Santa 🎅');
     } catch (e) {
-      console.log('Donation cancelled');
+      console.error(e);
+      sdk.haptics.notificationOccurred('error');
+      setStatus('❌ Donation cancelled');
     }
   };
 
@@ -272,7 +294,7 @@ export default function Home() {
             <button
               onClick={() => throwSnowball(targetUsername.trim())}
               disabled={!targetUsername.trim()}
-              className="w-full py-3.5 bg-gradient-to-r from-rose-500 via-red-500 to-amber-400 hover:from-rose-400 hover:via-red-500 hover:to-amber-300 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm shadow-[0_18px_45px_rgba(248,113,113,0.55)] active:scale-[0.98] transition flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-rose-50 via-red-500 to-amber-400 hover:from-rose-400 hover:via-red-500 hover:to-amber-300 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm shadow-[0_18px_45px_rgba(248,113,113,0.55)] active:scale-[0.98] transition flex items-center justify-center gap-2"
             >
               <Snowflake className="w-4 h-4" />
               Launch Snowball
