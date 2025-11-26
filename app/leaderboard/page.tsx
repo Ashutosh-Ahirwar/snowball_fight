@@ -4,14 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import sdk from '@farcaster/miniapp-sdk';
 import Snowfall from 'react-snowfall';
-import { Trophy, ArrowLeft, Flame, User } from 'lucide-react';
-
-/**
- * NOTE:
- * This page shows:
- * - Global top 20 players by SPP
- * - Current user's rank + SPP + streak (even if not in top 20)
- */
+import { Trophy, ArrowLeft, User } from 'lucide-react';
 
 type LeaderboardEntry = {
   username: string;
@@ -25,6 +18,13 @@ type UserRankInfo = {
   rank: number | null;
   points: number;
   streak: number;
+};
+
+// Single emoji streak formatter
+const streakEmoji = (streak: number) => {
+  if (streak >= 2) return '🔥'; // hot streak
+  if (streak === 1) return '☃️'; // fresh streak
+  return '❄️'; // cold
 };
 
 export default function LeaderboardPage() {
@@ -42,12 +42,14 @@ export default function LeaderboardPage() {
 
       try {
         const res = await fetch(
-          `/api/leaderboard?user=${encodeURIComponent(uname)}`,
+          `/api/leaderboard?user=${encodeURIComponent(uname)}`
         );
         const data = await res.json();
+
         if (Array.isArray(data.entries)) {
           setEntries(data.entries);
         }
+
         if (data.user) {
           setUserInfo({
             username: data.user.username,
@@ -71,7 +73,7 @@ export default function LeaderboardPage() {
       <Snowfall color="#e5e7eb" snowflakeCount={100} />
 
       <div className="relative z-10 max-w-md mx-auto px-4 pt-4 space-y-4">
-        {/* Header with back to game */}
+        {/* Back + user */}
         <div className="flex items-center justify-between mb-1">
           <Link
             href="/"
@@ -90,7 +92,7 @@ export default function LeaderboardPage() {
           <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center">
             <Trophy className="w-5 h-5 text-yellow-300" />
           </div>
-          <div>
+          <div className="leading-tight">
             <h1 className="text-base font-semibold">Global Iceboard</h1>
             <p className="text-[11px] text-slate-400">
               Top 20 Snow Power hoarders and your overall rank.
@@ -98,7 +100,7 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
-        {/* Your rank box */}
+        {/* Your position */}
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 shadow space-y-2">
           <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
             Your position
@@ -109,7 +111,7 @@ export default function LeaderboardPage() {
                 <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center">
                   <User className="w-4 h-4 text-slate-100" />
                 </div>
-                <div>
+                <div className="leading-tight">
                   <p className="text-sm font-semibold">
                     #{userInfo.rank} @{userInfo.username}
                   </p>
@@ -118,14 +120,13 @@ export default function LeaderboardPage() {
                   </p>
                 </div>
               </div>
-              <div className="text-right text-[11px]">
-                <p className="text-slate-400">SPP</p>
+              <div className="text-right text-[11px] leading-tight">
+                <p className="text-slate-400">Snow Power</p>
                 <p className="font-semibold text-slate-100">
                   {userInfo.points}
                 </p>
-                <p className="flex items-center justify-end gap-1 text-slate-400 mt-0.5">
-                  <Flame className="w-3 h-3" />
-                  Streak x{userInfo.streak}
+                <p className="mt-0.5 text-slate-400">
+                  {streakEmoji(userInfo.streak)} x{userInfo.streak}
                 </p>
               </div>
             </div>
@@ -136,7 +137,7 @@ export default function LeaderboardPage() {
           )}
         </div>
 
-        {/* Global top 20 list */}
+        {/* Top 20 list */}
         <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 shadow">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
@@ -163,6 +164,7 @@ export default function LeaderboardPage() {
                 const isYou =
                   entry.username?.toLowerCase() === username?.toLowerCase();
                 const streakValue = entry.streak ?? 0;
+                const medals = ['🥇', '🥈', '🥉'];
 
                 return (
                   <div
@@ -175,7 +177,7 @@ export default function LeaderboardPage() {
                   >
                     <div className="flex items-center gap-2">
                       <div className="w-5 text-[11px] font-semibold text-slate-300">
-                        {index + 1}.
+                        {medals[index] || `${index + 1}.`}
                       </div>
                       <p className="font-semibold text-slate-100">
                         @{entry.username || 'anon'}
@@ -191,16 +193,13 @@ export default function LeaderboardPage() {
                         )}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end text-right">
-                      <span className="text-[10px] text-slate-300">
+                    <div className="text-right text-[10px] leading-tight">
+                      <p className="text-slate-300">
                         {entry.points} SPP
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] text-slate-400">
-                        {streakValue > 1 && (
-                          <Flame className="w-3 h-3 text-amber-300" />
-                        )}
-                        Streak x{streakValue}
-                      </span>
+                      </p>
+                      <p className="text-slate-400">
+                        {streakEmoji(streakValue)} x{streakValue}
+                      </p>
                     </div>
                   </div>
                 );
@@ -209,13 +208,17 @@ export default function LeaderboardPage() {
           )}
         </div>
 
-        {/* Explanation block */}
+        {/* Notes / explanation */}
         <div className="text-[10px] text-slate-500 space-y-1">
           <p>Notes:</p>
           <ul className="list-disc ml-4 space-y-0.5">
-            <li>SPP = Snow Power Points earned from hits, streaks, and bonuses.</li>
             <li>
-              Streak = number of consecutive days of hits without a 24h break.
+              <strong>Snow Power Points (SPP)</strong> are earned from hits, streaks, revenge shots,
+              and first-time hits on new players.
+            </li>
+            <li>
+              <strong>Streak</strong> is how many consecutive days you&apos;ve landed hits without a
+              24h break.
             </li>
             <li>
               Your overall rank is based on total SPP even if you are not in the top 20 list.

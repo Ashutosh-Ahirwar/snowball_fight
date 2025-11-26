@@ -2,14 +2,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/db';
 
+type LeaderboardRow = {
+  username: string;
+  points: number;
+  streak: number;
+  badge?: string;
+};
+
+type UserInfo = {
+  username: string;
+  rank: number | null;
+  points: number;
+  streak: number;
+};
+
 /**
  * Response shape:
  * {
- *   entries: { username, points, streak, badge }[],
- *   user: { username, rank, points, streak } | null
+ *   entries: LeaderboardRow[],
+ *   user: UserInfo | null
  * }
  *
- * - `entries` is the global top 20
+ * - `entries` is the global top 20 by Snow Power Points (SPP)
  * - `user` is the requested user's global rank + total SPP + streak
  */
 
@@ -18,10 +32,10 @@ export async function GET(req: NextRequest) {
   const userParam = searchParams.get('user');
   const user = userParam ? userParam.toLowerCase() : null;
 
-  // Top 20 SPP holders
+  // --- Global top 20 by SPP ---
   const raw = await redis.zrevrange('snowball:points', 0, 19, 'WITHSCORES');
 
-  const entries = [];
+  const entries: LeaderboardRow[] = [];
   for (let i = 0; i < raw.length; i += 2) {
     const username = raw[i];
     const points = Number(raw[i + 1]);
@@ -36,20 +50,17 @@ export async function GET(req: NextRequest) {
       username,
       points,
       streak,
-      badge,
+      badge: badge || undefined,
     });
   }
 
-  // Compute requested user's rank + points + streak, even if outside top 20
-  let userInfo = null as
-    | { username: string; rank: number | null; points: number; streak: number }
-    | null;
+  // --- User-specific rank + SPP + streak (even if not in top 20) ---
+  let userInfo: UserInfo | null = null;
 
   if (user) {
     const rank = await redis.zrevrank('snowball:points', user);
     const score = await redis.zscore('snowball:points', user);
-    const streak =
-      Number(await redis.get(`snowball:streak:${user}`)) || 0;
+    const streak = Number(await redis.get(`snowball:streak:${user}`)) || 0;
 
     userInfo = {
       username: user,
