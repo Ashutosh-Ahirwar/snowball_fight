@@ -15,12 +15,21 @@ export default function Home() {
   const [targetUsername, setTargetUsername] = useState<string>('');
   const [isDonating, setIsDonating] = useState<boolean>(false);
 
+  // NEW: popup + loading for addMiniApp
+  const [showAddPrompt, setShowAddPrompt] = useState<boolean>(false);
+  const [isAdding, setIsAdding] = useState<boolean>(false);
+
   const handleRegister = useCallback(async () => {
     try {
-      setStatus('🎁 Adding to collection...');
-      const result = await sdk.actions.addMiniApp();
+      setIsAdding(true);
+      setStatus('🎁 Adding to your miniapps...');
 
-      if (result.notificationDetails) {
+      const result = await sdk.actions.addMiniApp();
+      console.log('addMiniApp result', result);
+
+      // Try to register for notifications if they’re available,
+      // but treat the add as successful even without them.
+      if (result && 'notificationDetails' in result && result.notificationDetails) {
         const context = await sdk.context;
         await fetch('/api/register', {
           method: 'POST',
@@ -31,11 +40,18 @@ export default function Home() {
             url: result.notificationDetails.url,
           }),
         });
-        setIsAdded(true);
-        setStatus('✅ Added! You are registered in the phonebook.');
       }
+
+      setIsAdded(true);
+      setShowAddPrompt(false);
+      setStatus('✅ Added to your miniapps!');
+      sdk.haptics.notificationOccurred('success');
     } catch (e) {
-      setStatus('');
+      console.error('addMiniApp error', e);
+      setStatus('❌ Could not add miniapp here. Try opening from the Miniapps tab.');
+      sdk.haptics.notificationOccurred('error');
+    } finally {
+      setIsAdding(false);
     }
   }, []);
 
@@ -45,7 +61,10 @@ export default function Home() {
       setUsername(context.user.username || 'Elf');
       setIsAdded(context.client.added);
 
-      if (!context.client.added) handleRegister();
+      // ✅ Instead of auto-calling addMiniApp, just show the popup if not added
+      if (!context.client.added) {
+        setShowAddPrompt(true);
+      }
 
       if (context.location?.type === 'cast_embed') {
         const embedUrl = new URL(context.location.embed);
@@ -93,7 +112,7 @@ export default function Home() {
     }
   };
 
-  // ✅ SIMPLER, RELIABLE DONATE FLOW
+  // Donate flow (unchanged)
   const donate = async () => {
     try {
       setIsDonating(true);
@@ -219,11 +238,19 @@ export default function Home() {
           </div>
           {!isAdded && (
             <button
-              onClick={handleRegister}
-              className="relative flex items-center gap-1 text-[10px] font-bold bg-white/15 hover:bg-white/20 px-3 py-1.5 rounded-full transition border border-white/30 shadow-sm"
+              // Open popup instead of calling addMiniApp directly
+              onClick={() => setShowAddPrompt(true)}
+              disabled={isAdding}
+              className="relative flex items-center gap-1 text-[10px] font-bold bg-white/15 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 rounded-full transition border border-white/30 shadow-sm"
             >
-              <Bookmark className="w-3 h-3" /> Bookmark
+              <Bookmark className="w-3 h-3" />
+              {isAdding ? 'Adding…' : 'Bookmark'}
             </button>
+          )}
+          {isAdded && (
+            <div className="text-[10px] font-semibold px-3 py-1.5 rounded-full bg-white/10 border border-white/20">
+              ✅ Saved
+            </div>
           )}
         </div>
 
@@ -292,7 +319,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Donate section – upgraded */}
+        {/* Donate section */}
         <div className="mt-7 space-y-3">
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-700/60 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.9)] flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-[0.16em]">
@@ -317,6 +344,39 @@ export default function Home() {
           </p>
         </div>
       </div>
+
+      {/* ✅ ADD MINIAPP POPUP */}
+      {showAddPrompt && !isAdded && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60">
+          <div className="bg-slate-900 text-slate-50 w-full max-w-xs mx-6 rounded-2xl p-4 shadow-2xl border border-slate-700/80">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-8 w-8 rounded-xl bg-slate-800 flex items-center justify-center">
+                <Bookmark className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-semibold">Save Snowball Fight?</h2>
+            </div>
+            <p className="text-[11px] text-slate-400 mb-4">
+              Add this miniapp to your collection so you can launch snowballs in one tap from your
+              Miniapps tab.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleRegister}
+                disabled={isAdding}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-red-500 hover:bg-red-400 disabled:opacity-60 disabled:cursor-not-allowed text-white shadow-md active:scale-[0.98] transition"
+              >
+                {isAdding ? 'Adding…' : 'Add to Miniapps'}
+              </button>
+              <button
+                onClick={() => setShowAddPrompt(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 active:scale-[0.98] transition"
+              >
+                Not now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
