@@ -12,16 +12,8 @@ import {
   Send,
   Trophy,
   Flame,
+  Info,
 } from 'lucide-react';
-
-/**
- * NOTE:
- * This page is the MAIN game screen:
- * - choose target
- * - throw snowballs
- * - see your rank + SPP summary
- * The full leaderboard is now on /leaderboard
- */
 
 export default function Home() {
   const [mode, setMode] = useState<'IDLE' | 'HIT' | 'PILE_ON'>('IDLE');
@@ -33,22 +25,21 @@ export default function Home() {
   const [targetUsername, setTargetUsername] = useState<string>('');
   const [isDonating, setIsDonating] = useState<boolean>(false);
 
-  // Add miniapp popup
   const [showAddPrompt, setShowAddPrompt] = useState<boolean>(false);
   const [isAdding, setIsAdding] = useState<boolean>(false);
 
-  // Snow Power Points (SPP) for the CURRENT user
+  // Snow Power Points for current user
   const [points, setPoints] = useState<number>(0);
 
-  // --- Rank helpers ---
+  // ---- Rank helpers ----
 
   const getRank = (pts: number) => {
-    if (pts >= 200) return '👑 Blizzard Overlord';
-    if (pts >= 120) return '🧊 Arctic Menace';
-    if (pts >= 60) return '🌪 Snowstorm Bringer';
-    if (pts >= 25) return '🌬 Frosty Brawler';
-    if (pts >= 10) return '🤺 Rookie Thrower';
-    return '❄️ Fresh Snowflake';
+    if (pts >= 200) return 'Blizzard Overlord';
+    if (pts >= 120) return 'Arctic Menace';
+    if (pts >= 60) return 'Snowstorm Bringer';
+    if (pts >= 25) return 'Frosty Brawler';
+    if (pts >= 10) return 'Rookie Thrower';
+    return 'Fresh Snowflake';
   };
 
   const getNextRankGoal = (pts: number) => {
@@ -64,32 +55,25 @@ export default function Home() {
   const progressToNextRank =
     nextRank.target === 0 ? 1 : Math.min(1, points / nextRank.target);
 
-  // --- Helper: fetch user’s current points from leaderboard API ---
+  // ---- Backend helpers ----
 
-  const loadUserPoints = useCallback(
-    async (uname: string) => {
-      try {
-        const res = await fetch(
-          `/api/leaderboard?user=${encodeURIComponent(uname)}`,
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.user && typeof data.user.points === 'number') {
-          setPoints(data.user.points);
-        }
-      } catch (e) {
-        console.error('Failed to load user points', e);
+  const loadUserPoints = useCallback(async (uname: string) => {
+    try {
+      const res = await fetch(`/api/leaderboard?user=${encodeURIComponent(uname)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.user && typeof data.user.points === 'number') {
+        setPoints(data.user.points);
       }
-    },
-    [],
-  );
-
-  // --- Add miniapp & register notification token ---
+    } catch (e) {
+      console.error('Failed to load user points', e);
+    }
+  }, []);
 
   const handleRegister = useCallback(async () => {
     try {
       setIsAdding(true);
-      setStatus('🎁 Adding to your miniapps...');
+      setStatus('Adding Snowball Fight to your miniapps...');
 
       const result = await sdk.actions.addMiniApp();
 
@@ -108,18 +92,18 @@ export default function Home() {
 
       setIsAdded(true);
       setShowAddPrompt(false);
-      setStatus('✅ Added! You can now get hit back & earn full SPP.');
+      setStatus('Added! You can now get hit back and earn full Snow Power.');
       sdk.haptics.notificationOccurred('success');
     } catch (e) {
       console.error('addMiniApp error', e);
-      setStatus('❌ Could not add miniapp here. Try opening from the Miniapps tab.');
+      setStatus('Could not add miniapp here. Try from the Miniapps tab.');
       sdk.haptics.notificationOccurred('error');
     } finally {
       setIsAdding(false);
     }
   }, []);
 
-  // --- Initial miniapp context + mode setup ---
+  // ---- Init from Farcaster context ----
 
   useEffect(() => {
     const init = async () => {
@@ -128,11 +112,8 @@ export default function Home() {
       setUsername(uname);
       setIsAdded(context.client.added);
 
-      if (!context.client.added) {
-        setShowAddPrompt(true);
-      }
+      if (!context.client.added) setShowAddPrompt(true);
 
-      // Mode detection:
       if (context.location?.type === 'cast_embed') {
         const embedUrl = new URL(context.location.embed);
         const referrer = embedUrl.searchParams.get('referrer');
@@ -149,14 +130,12 @@ export default function Home() {
       }
 
       sdk.actions.ready();
-
-      // Load the user's current SPP from backend
       loadUserPoints(uname);
     };
     init();
   }, [handleRegister, loadUserPoints]);
 
-  // --- Throw snowball: main action ---
+  // ---- Actions ----
 
   const throwSnowball = async (targetUsernameLocal: string) => {
     if (!targetUsernameLocal) return;
@@ -165,7 +144,7 @@ export default function Home() {
     sdk.haptics.impactOccurred('light');
 
     const cleanTarget = targetUsernameLocal.replace('@', '').trim();
-    setStatus(`❄️ Launching snowball at @${cleanTarget}...`);
+    setStatus(`Launching snowball at @${cleanTarget}...`);
 
     const res = await fetch('/api/throw', {
       method: 'POST',
@@ -187,55 +166,49 @@ export default function Home() {
       const serverTotal =
         typeof data.totalPoints === 'number' ? data.totalPoints : null;
 
-      // Prefer total from backend (authoritative), fall back to local add
       setPoints(prev => (serverTotal !== null ? serverTotal : prev + awarded));
 
-      let msg = `🎯 Direct hit! +${awarded} SPP`;
+      let msg = `Direct hit! +${awarded} Snow Power Points.`;
       if (typeof data.streak === 'number' && data.streak > 1) {
-        msg += ` • 🔥 Streak x${data.streak}`;
+        msg += ` Streak x${data.streak}.`;
       }
       if (!isAdded) {
-        msg +=
-          ' ⚠️ Add Snowball Fight to your Miniapps so friends can hit you back & you can climb the board.';
+        msg += ' Add Snowball Fight to your miniapps so friends can hit you back.';
       }
 
       setStatus(msg);
     } else {
       sdk.haptics.notificationOccurred('warning');
       if (res.status === 404) {
-        setStatus(`❌ Missed! @${cleanTarget} isn’t playing yet.`);
+        setStatus(`@${cleanTarget} isn’t playing yet.`);
         setInviteTarget(cleanTarget);
       } else {
-        setStatus(`❌ ${data.error || 'Missed!'}`);
+        setStatus(data.error || 'Snowball missed.');
       }
     }
   };
 
-  // --- Donation button ---
-
   const donate = async () => {
     try {
       setIsDonating(true);
-      setStatus('☕ Opening Santa’s tip jar...');
+      setStatus('Opening Santa’s tip jar...');
 
       await sdk.actions.sendToken({
         recipientAddress: '0xa6dee9fde9e1203ad02228f00bf10235d9ca3752',
-        amount: '5000000000000000', // 0.005 ETH in wei
-        token: 'eip155:8453/native', // Base mainnet native token
+        amount: '5000000000000000',
+        token: 'eip155:8453/native',
       });
 
       sdk.haptics.notificationOccurred('success');
-      setStatus('✅ Donation sent! Santa says thanks 🎅');
+      setStatus('Donation sent! Santa says thanks.');
     } catch (e) {
       console.error(e);
       sdk.haptics.notificationOccurred('error');
-      setStatus('❌ Donation cancelled');
+      setStatus('Donation cancelled.');
     } finally {
       setIsDonating(false);
     }
   };
-
-  // --- Invite cast for non-registered targets ---
 
   const inviteUser = async () => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
@@ -243,76 +216,67 @@ export default function Home() {
 
     try {
       await sdk.actions.composeCast({
-        text: `Hey @${inviteTarget}, come fight me! ❄️`,
+        text: `Hey @${inviteTarget}, come fight me in Snowball Fight ❄️`,
         embeds: [shareUrl],
       });
       setInviteTarget('');
-      setStatus('📨 Challenge sent!');
+      setStatus('Challenge cast posted.');
     } catch (e) {
       console.error(e);
     }
   };
 
-  // === HIT SCREEN ===
+  // ===== Modes =====
 
   if (mode === 'HIT') {
     return (
       <div className="relative flex flex-col items-center justify-center h-screen bg-slate-950 text-white p-4 overflow-hidden">
-        <Snowfall snowflakeCount={240} />
-        <div className="relative z-10 max-w-sm w-full text-center space-y-5">
+        <Snowfall snowflakeCount={220} />
+        <div className="relative z-10 max-w-sm w-full text-center space-y-4">
           <div className="text-7xl">🥶</div>
-          <h1 className="text-3xl font-bold">You got hit!</h1>
+          <p className="text-lg font-semibold">You got hit!</p>
           <p className="text-xs text-slate-300">
-            Someone just pelted you with a snowball. Clean up & send one back to earn SPP.
+            Someone tagged you with a snowball. Throw one back to earn Snow Power Points.
           </p>
           {!isAdded && (
-            <p className="text-[11px] text-amber-200/90">
-              ⚠️ Add Snowball Fight to your Miniapps to keep receiving hits & build streaks.
+            <p className="text-[11px] text-amber-200">
+              Add Snowball Fight to your miniapps to keep receiving hits and building streaks.
             </p>
           )}
           <button
             onClick={() => setMode('IDLE')}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-semibold shadow-lg active:translate-y-0.5 transition"
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-sm font-semibold shadow-md active:translate-y-0.5 transition"
           >
-            Wipe Face & Retaliate 😤
+            Wipe Face & Retaliate
           </button>
         </div>
       </div>
     );
   }
 
-  // === PILE-ON SCREEN ===
-
   if (mode === 'PILE_ON') {
     return (
       <div className="relative flex flex-col h-screen bg-slate-950 text-white overflow-hidden">
         <Snowfall snowflakeCount={200} />
         <div className="relative z-10 flex-grow flex flex-col items-center justify-center p-5">
-          <div className="w-full max-w-md space-y-5">
+          <div className="w-full max-w-md space-y-4">
             <div className="text-center space-y-1">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                Pile-on Mode
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                Pile-on mode
               </p>
-              <h1 className="text-2xl font-bold">
-                Freeze{' '}
-                <span className="text-amber-300">@{aggressor}</span>
-              </h1>
-              <p className="text-xs text-slate-300">
-                Join the raid on this cast and earn bonus SPP for pile-on hits.
+              <p className="text-lg font-semibold">
+                Freeze <span className="text-amber-300">@{aggressor}</span>
+              </p>
+              <p className="text-xs text-slate-400">
+                Join everyone hitting this cast and earn bonus Snow Power Points.
               </p>
             </div>
 
-            {!isAdded && (
-              <div className="bg-amber-900/40 border border-amber-400/60 text-amber-100 text-[11px] rounded-xl px-3 py-2 text-center">
-                ⚠️ Add Snowball Fight to your Miniapps to get hit back & build your streak.
-              </div>
-            )}
-
             <button
               onClick={() => throwSnowball(aggressor)}
-              className="w-full py-3 bg-gradient-to-r from-rose-500 to-amber-400 text-white rounded-xl text-base font-semibold shadow-xl active:scale-[0.98] transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gradient-to-r from-rose-500 to-amber-400 text-white rounded-xl text-sm font-semibold shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 transition"
             >
-              <Snowflake className="w-4 h-4" /> Throw Snowball
+              <Snowflake className="w-4 h-4" /> Throw snowball
             </button>
           </div>
         </div>
@@ -320,23 +284,23 @@ export default function Home() {
     );
   }
 
-  // === MAIN IDLE SCREEN ===
+  // ===== Main idle screen =====
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-50 pb-8 overflow-hidden">
-      <Snowfall color="#e5e7eb" snowflakeCount={120} />
+      <Snowfall color="#e5e7eb" snowflakeCount={100} />
 
       <div className="relative z-10 px-4 pt-4 max-w-md mx-auto space-y-4">
-        {/* HEADER: miniapp name + add status */}
-        <div className="bg-gradient-to-r from-red-600 to-rose-500 text-white px-4 py-3 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-red-600 to-rose-500 text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-md">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-              <Snowflake className="w-5 h-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
+              <Snowflake className="w-4 h-4" />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold">Snowball Fight</h1>
-              <p className="text-[11px] text-red-50/90">
-                Logged in as <span className="font-medium">@{username}</span>
+            <div className="leading-tight">
+              <p className="text-sm font-semibold">Snowball Fight</p>
+              <p className="text-[11px] text-red-50/80">
+                @{username}
               </p>
             </div>
           </div>
@@ -351,57 +315,50 @@ export default function Home() {
             </button>
           ) : (
             <span className="text-[10px] font-semibold px-3 py-1.5 rounded-full bg-white/15 border border-white/30">
-              ✅ Saved
+              Saved
             </span>
           )}
         </div>
 
-        {/* STATUS BUBBLE */}
+        {/* Status */}
         {status && (
-          <div className="bg-slate-900/80 border border-slate-700 text-white text-xs text-center py-2 px-4 rounded-xl shadow">
+          <div className="bg-slate-900/80 border border-slate-800 text-xs text-slate-100 text-center py-2 px-4 rounded-xl shadow-sm">
             {status}
           </div>
         )}
 
-        {/* MAIN CARD: rank + target input */}
-        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 shadow-lg space-y-4">
-          {/* Rank header */}
+        {/* Main card */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-md space-y-4">
+          {/* Rank row */}
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                Choose your target
-              </p>
-              <p className="text-[11px] text-slate-400">
-                Hit back, start beefs, and farm Snow Power Points.
+            <div className="text-[11px]">
+              <p className="text-slate-300 font-semibold">Choose your target</p>
+              <p className="text-slate-500">
+                Throw at a friend to earn Snow Power.
               </p>
             </div>
-            <div className="text-right text-[11px]">
+            <div className="text-right text-[11px] leading-tight">
               <p className="flex items-center justify-end gap-1 text-slate-400">
                 <Trophy className="w-3 h-3" /> Rank
               </p>
-              <p className="font-semibold text-slate-100">
+              <p className="text-slate-100 font-semibold">
                 {getRank(points)}
               </p>
               <p className="text-slate-400">
-                SPP:{' '}
-                <span className="font-semibold text-slate-100">
-                  {points}
-                </span>
+                Snow Power: <span className="font-semibold">{points}</span>
               </p>
             </div>
           </div>
 
-          {/* Progress bar to next rank */}
+          {/* Progress bar */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] text-slate-400">
               <span className="flex items-center gap-1">
                 <Flame className="w-3 h-3" />
-                Next: {nextRank.label}
+                Next rank: {nextRank.label}
               </span>
               {nextRank.needed > 0 && (
-                <span className="font-semibold text-slate-200">
-                  {nextRank.needed} SPP to go
-                </span>
+                <span>{nextRank.needed} Snow Power to go</span>
               )}
             </div>
             <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
@@ -412,7 +369,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Target input + launch button */}
+          {/* Target input */}
           <div className="space-y-2">
             <label
               htmlFor="targetUsername"
@@ -421,67 +378,75 @@ export default function Home() {
               Target username
             </label>
             <input
-              type="text"
               id="targetUsername"
+              type="text"
               value={targetUsername}
               onChange={e => setTargetUsername(e.target.value)}
               placeholder="e.g. dwr"
               autoCapitalize="none"
-              className="w-full px-3 py-3 bg-slate-950 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/50 placeholder:text-slate-500"
+              className="w-full px-3 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/60 placeholder:text-slate-500"
             />
             <button
               onClick={() => throwSnowball(targetUsername.trim())}
               disabled={!targetUsername.trim()}
-              className="w-full py-3 bg-gradient-to-r from-rose-500 to-amber-400 text-white rounded-xl text-sm font-semibold shadow-xl active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2 transition"
+              className="w-full py-3 bg-gradient-to-r from-rose-500 to-amber-400 text-white rounded-xl text-sm font-semibold shadow-md active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2 transition"
             >
-              <Snowflake className="w-4 h-4" /> Launch Snowball
+              <Snowflake className="w-4 h-4" />
+              Launch snowball
             </button>
           </div>
 
-          {/* Invite flow when target hasn't added app */}
+          {/* Invite section */}
           {inviteTarget && (
-            <div className="mt-2 pt-3 border-t border-slate-700/70">
-              <div className="bg-amber-900/40 border border-amber-500/50 rounded-xl p-3 space-y-2">
+            <div className="mt-1 pt-3 border-t border-slate-800">
+              <div className="bg-amber-900/30 border border-amber-500/40 rounded-xl p-3 space-y-2">
                 <p className="text-[11px] text-amber-100 text-center">
-                  @{inviteTarget} isn&apos;t playing yet. Cast an invite to drag them into the snow.
+                  @{inviteTarget} hasn&apos;t added Snowball Fight yet. Cast an invite to pull them in.
                 </p>
                 <button
                   onClick={inviteUser}
-                  className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-lg text-[11px] font-semibold shadow-md flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-lg text-[11px] font-semibold shadow-sm flex items-center justify-center gap-2"
                 >
-                  <Send className="w-4 h-4" /> Cast an Invite
+                  <Send className="w-4 h-4" /> Cast invite
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* LINK TO LEADERBOARD PAGE */}
+        {/* SPP explanation */}
+        <div className="flex items-start gap-2 text-[10px] text-slate-400 bg-slate-900/70 border border-slate-800 rounded-2xl px-3 py-2">
+          <Info className="w-3 h-3 mt-0.5" />
+          <p>
+            <span className="font-semibold">Snow Power Points (SPP)</span> are your score in
+            Snowball Fight. You earn SPP from hits, streaks, revenge shots, and first-time hits on new
+            players. More SPP = higher rank and better spot on the Global Iceboard.
+          </p>
+        </div>
+
+        {/* Leaderboard link */}
         <Link
           href="/leaderboard"
-          className="flex items-center justify-between bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-xs shadow"
+          className="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 text-xs shadow-sm"
         >
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-yellow-300" />
             <div>
-              <p className="font-semibold text-slate-100">
-                Global Iceboard
-              </p>
+              <p className="font-semibold text-slate-100">Global Iceboard</p>
               <p className="text-[11px] text-slate-400">
-                View top 20 players and your full rank.
+                See the top 20 players and your full rank.
               </p>
             </div>
           </div>
           <span className="text-[11px] text-slate-300">Open</span>
         </Link>
 
-        {/* DONATE CARD */}
-        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 shadow flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 uppercase tracking-[0.16em]">
-            <Gift className="w-4 h-4" />
+        {/* Donate card */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col items-center gap-2">
+          <p className="text-[11px] font-semibold text-slate-300">
             Support the arena
-          </div>
-          <p className="text-[11px] text-slate-400 text-center">
+          </p>
+          <p className="text-[11px] text-slate-500 text-center">
             Help keep the snow machines running. A tiny tip, big Christmas spirit.
           </p>
           <button
@@ -495,7 +460,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ADD MINIAPP MODAL */}
+      {/* Add miniapp modal */}
       {showAddPrompt && !isAdded && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60">
           <div className="bg-slate-900 text-slate-50 w-full max-w-xs mx-6 rounded-2xl p-4 shadow-2xl border border-slate-700/80">
@@ -503,11 +468,11 @@ export default function Home() {
               <div className="h-8 w-8 rounded-xl bg-slate-800 flex items-center justify-center">
                 <Bookmark className="w-4 h-4" />
               </div>
-              <h2 className="text-sm font-semibold">Save Snowball Fight?</h2>
+              <h2 className="text-sm font-semibold">Add Snowball Fight</h2>
             </div>
             <p className="text-[11px] text-slate-400 mb-4">
-              Add this miniapp to your collection so you can launch snowballs from the Miniapps tab
-              and receive full notifications + SPP.
+              Save this miniapp so you can launch snowballs from the Miniapps tab and receive full
+              notifications (and SPP) when people hit you.
             </p>
             <div className="flex gap-2">
               <button
@@ -515,7 +480,7 @@ export default function Home() {
                 disabled={isAdding}
                 className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white shadow-md active:scale-[0.98] transition"
               >
-                {isAdding ? 'Adding…' : 'Add to Miniapps'}
+                {isAdding ? 'Adding…' : 'Add to miniapps'}
               </button>
               <button
                 onClick={() => setShowAddPrompt(false)}
