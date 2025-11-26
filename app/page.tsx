@@ -345,7 +345,7 @@ export default function Home() {
                 {getRank(points)}
               </p>
               <p className="text-slate-400">
-                Snow Power: <span className="font-semibold">{points}</span>
+                SPP: <span className="font-semibold">{points}</span>
               </p>
             </div>
           </div>
