@@ -36,9 +36,10 @@
       "eip155:8453"
     ],
     "requiredCapabilities": [
-      "actions.sendToken",     
-      "actions.composeCast",
-      "wallet.getEthereumProvider"
-    ]
+  "actions.addMiniApp",      
+  "actions.sendToken",
+  "actions.composeCast",
+  "wallet.getEthereumProvider"
+]
   }
 }
