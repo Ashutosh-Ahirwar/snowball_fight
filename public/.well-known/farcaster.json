@@ -1,0 +1,43 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEzNzEyODgsInR5cGUiOiJhdXRoIiwia2V5IjoiMHg4NGM0N0JDNDBhNDY4MGI5QjFjM2I2YUY3ZkZjYjg4ODhkYzBEMzU3In0",
+    "payload": "eyJkb21haW4iOiJzbm93YmFsbC1maWdodC10YXdueS52ZXJjZWwuYXBwIn0",
+    "signature": "fLpv8mP+EVPvTf3s68DDro68EV6OuzzjEwBeA5pX4yhaVzxYJbFYDlV+ydtJ7zUoUAAO4bgamiDIhHT5u6/OdRw="
+  },
+  "frame": {
+    "name": "Snowball Fight",
+    "version": "1",
+    "iconUrl": "https://snowball-fight-tawny.vercel.app/icon.png",
+    "homeUrl": "https://snowball-fight-tawny.vercel.app",
+    "imageUrl": "https://snowball-fight-tawny.vercel.app/icon.png",
+    "buttonTitle": "Throw Snowball",
+    "splashImageUrl": "https://snowball-fight-tawny.vercel.app/splash.png",
+    "splashBackgroundColor": "#b91c1c",
+    "webhookUrl": "https://snowball-fight-tawny.vercel.app/api/webhook",
+    "castShareUrl": "https://snowball-fight-tawny.vercel.app",
+    "subtitle": "Festive Snowball Warfare",
+    "description": "Throw digital snowballs at your friends! Hit them by Username. Watch out—they can hit back.",
+    "screenshotUrls": [
+      "https://snowball-fight-tawny.vercel.app/screenshot1.png"
+    ],
+    "primaryCategory": "games",
+    "tags": [
+      "christmas",
+      "snowball",
+      "fight",
+      "game",
+      "santa"
+    ],
+    "tagline": "Duck and cover!",
+    "ogTitle": "Snowball Fight",
+    "ogDescription": "Join the ultimate Farcaster snowball fight. Hit your friends, get hit back.",
+    "ogImageUrl": "https://snowball-fight-tawny.vercel.app/hero.png",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "requiredCapabilities": [
+      "actions.sendToken",
+      "actions.composeCast"
+    ]
+  }
+}
