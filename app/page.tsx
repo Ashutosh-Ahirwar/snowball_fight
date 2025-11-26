@@ -310,9 +310,6 @@ export default function Home() {
               <Gift className="w-4 h-4 group-hover:animate-bounce" />
               {isDonating ? 'Processing...' : 'Buy Santa a Coffee'}
             </button>
-            <p className="text-[10px] text-slate-500 text-center">
-              Sends <span className="font-semibold text-slate-300">0.005 ETH</span> on Base 🎁
-            </p>
           </div>
 
           <p className="text-slate-500 text-[10px] font-medium tracking-[0.18em] uppercase text-center">
