@@ -106,7 +106,6 @@ export default function Home() {
     }
   };
 
-  // --- UPDATED INVITE LOGIC ---
   const inviteUser = async () => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const shareUrl = `${appUrl}/share?user=${username}&mode=invite`;
@@ -252,9 +251,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <span className="text-[10px] px-2 py-1 rounded-full bg-slate-800 text-slate-200 border border-slate-700">
-              Real-time ✦
-            </span>
           </div>
 
           <div className="space-y-3">
